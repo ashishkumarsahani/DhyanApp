@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Dhayan.MySplash" parent="Theme.SplashScreen">
+<!--        <item name="windowSplashScreenBackground">#FFE3D3</item>-->
+        <item name="windowSplashScreenBackground">#FFFFFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/dhyan_main_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.Dhayan</item>
+    </style>
+</resources>

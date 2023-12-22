@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "667182752134",
+    "firebase_url": "https://dhyanapp-90de4-default-rtdb.firebaseio.com",
+    "project_id": "dhyanapp-90de4",
+    "storage_bucket": "dhyanapp-90de4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667182752134:android:d54bc9455e14ae95118c07",
+        "android_client_info": {
+          "package_name": "com.epilepto.dhyanapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "667182752134-uij9dpd892rh0gqd7b12tm0r6mi43pje.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.epilepto.dhyanapp",
+            "certificate_hash": "1843588d1b3e57076aa93b7e7316736cdbc86f21"
+          }
+        },
+        {
+          "client_id": "667182752134-v6ecicm9u6p0geq245ud91ff7ni427ff.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDH5srajEJnUwltHJKzTJEYYizAoJpSKAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "667182752134-v6ecicm9u6p0geq245ud91ff7ni427ff.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
