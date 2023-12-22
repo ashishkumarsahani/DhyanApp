@@ -62,10 +62,9 @@
                 <action android:name="android.intent.action.ACTION_FOUND" />
             </intent-filter>
         </receiver>-->
-
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.epilepto.dhayan.fileprovider"
+            android:authorities="com.epilepto.dhyanapp.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

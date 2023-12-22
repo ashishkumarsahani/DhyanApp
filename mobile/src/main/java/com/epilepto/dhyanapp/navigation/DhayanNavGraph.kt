@@ -446,6 +446,7 @@ fun NavGraphBuilder.homeScreen(
             node = node,
             onConnectToWatch = {
                 if (node != null) {
+                    Log.d("User ID", "homeScreen: ${Firebase.auth.currentUser?.uid}")
                     Firebase.auth.currentUser?.uid?.let { userId ->
                         coroutineScope.launch {
                             Wearable.getMessageClient(context)
