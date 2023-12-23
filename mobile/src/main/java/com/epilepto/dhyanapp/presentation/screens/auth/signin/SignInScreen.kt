@@ -17,12 +17,8 @@ import com.stevdzasan.onetap.OneTapSignInWithGoogle
 
 @Composable
 fun SignInScreen(
-    oneTapSignInState: OneTapSignInState,
     messageBarState: MessageBarState,
     loadingState: Boolean,
-    onTokenIdReceived: (String) -> Unit,
-    onDialogDismissed: (String) -> Unit,
-    navigateToHome: () -> Unit,
     navigateToRegister: () -> Unit,
     onLoginWithGoogle: () -> Unit,
     onLoginWithFacebook: () -> Unit,
@@ -54,12 +50,5 @@ fun SignInScreen(
             )
         }
     }
-
-    OneTapSignInWithGoogle(
-        state = oneTapSignInState,
-        clientId = Constants.CLIENT_ID,
-        onTokenIdReceived = onTokenIdReceived,
-        onDialogDismissed = onDialogDismissed
-    )
 
 }

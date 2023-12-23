@@ -1,10 +1,13 @@
 package com.epilepto.dhyanapp.navigation
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,11 +37,15 @@ import com.epilepto.dhyanapp.presentation.screens.main_screen.components.Display
 import com.epilepto.dhyanapp.presentation.screens.main_screen.home.SessionViewModel
 import com.epilepto.dhyanapp.presentation.screens.onboarding.OnBoardingScreen
 import com.epilepto.dhyanapp.presentation.screens.pairing.PairingPermissionScreen
+import com.epilepto.dhyanapp.utils.Constants
 import com.epilepto.dhyanapp.utils.SignInUtils
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
@@ -52,6 +59,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import com.stevdzasan.messagebar.rememberMessageBarState
 import com.stevdzasan.onetap.rememberOneTapSignInState
+import kotlin.math.acosh
 
 
 @OptIn(ExperimentalHorologistApi::class)
@@ -163,13 +171,38 @@ fun NavGraphBuilder.signInScreen(
 ) {
     composable(route = Screen.SignIn.route) {
         val authViewModel: AuthenticationViewModel = hiltViewModel()
-        val oneTapSignInState = rememberOneTapSignInState()
         val messageBarState = rememberMessageBarState()
         val loadingState = authViewModel.loadingState.collectAsStateWithLifecycle().value
         val coroutineScope = rememberCoroutineScope()
+        val context = LocalContext.current
+        val activity = context as Activity
+        val signInState by authViewModel.signInState.collectAsStateWithLifecycle()
+        val signUpState by authViewModel.signupState.collectAsStateWithLifecycle()
 
-        val signInState = authViewModel.signInState.collectAsStateWithLifecycle().value
-        val signUpState = authViewModel.signupState.collectAsStateWithLifecycle().value
+        val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(Constants.CLIENT_ID)
+            .requestEmail()
+            .build()
+
+        val googleSignInClient = GoogleSignIn.getClient(activity, googleSignInOptions)
+        val signInLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                try {
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    val account = task.getResult(ApiException::class.java)!!
+                    account.idToken?.let{
+                        Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                        authViewModel.signInWithGoogle(token= it)
+                    }
+                } catch (e: ApiException) {
+                    messageBarState.addError(e)
+                    authViewModel.setLoading(false)
+                }
+            }else{
+
+                Toast.makeText(context, result.resultCode.toString(), Toast.LENGTH_SHORT).show()
+            }
+        }
 
         when {
             signInState.isLoading -> {
@@ -220,12 +253,12 @@ fun NavGraphBuilder.signInScreen(
         }
 
         SignInScreen(
-            oneTapSignInState = oneTapSignInState,
             messageBarState = messageBarState,
             loadingState = loadingState,
             onLoginWithGoogle = {
                 authViewModel.setLoading(true)
-                oneTapSignInState.open()
+                val signInIntent = googleSignInClient.signInIntent
+                signInLauncher.launch(signInIntent)
             },
             onLoginWithFacebook = {
                 authViewModel.setLoading(true)
@@ -238,14 +271,6 @@ fun NavGraphBuilder.signInScreen(
                 else
                     messageBarState.addError(Exception(errorMessage))
             },
-            onDialogDismissed = { message ->
-                messageBarState.addError(Exception(message))
-                authViewModel.setLoading(false)
-            },
-            onTokenIdReceived = { token ->
-                authViewModel.signInWithGoogle(token)
-            },
-            navigateToHome = navigateToHome,
             navigateToRegister = navigateToRegister,
             onForgotPassword = { email ->
                 var message = SignInUtils.isEmailValid(email)
@@ -498,8 +523,14 @@ fun NavGraphBuilder.homeScreen(
             dialogOpened = showDeleteUserDialog,
             onCloseDialog = { showDeleteUserDialog = false },
             onConfirmClicked = {
-                authViewModel.deleteUser()
-                navigateToAuthentication()
+                authViewModel.deleteUser(
+                    onSuccess = {
+                        navigateToAuthentication()
+                    },
+                    onError = {exception ->
+                        Toast.makeText(context, "Failed to delete profile", Toast.LENGTH_SHORT).show()
+                    }
+                )
             })
     }
 }

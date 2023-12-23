@@ -3,34 +3,41 @@ package com.epilepto.dhyanapp.presentation.screens.main_screen.home
 import android.graphics.Picture
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,124 +51,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.epilepto.dhyanapp.R
 import com.epilepto.dhyanapp.model.user.User
-import com.epilepto.dhyanapp.presentation.components.CircularScoreBoard
 import com.epilepto.dhyanapp.presentation.components.LoadingScreen
 import com.epilepto.dhyanapp.presentation.screens.main_screen.home.session_result.SessionCard
+import com.epilepto.dhyanapp.theme.BlackCardColor
 import com.epilepto.dhyanapp.theme.Roboto
+import com.epilepto.dhyanapp.theme.WhiteCardColor
 import com.epilepto.dhyanapp.utils.capture
 import com.epilepto.dhyanapp.utils.format
 import com.epilepto.dhyanapp.utils.saveAndShareSession
 import com.google.android.gms.wearable.Node
-
-
-@Composable
-fun HomeScreenContent(
-    token: String?,
-    getToken: () -> Unit,
-    setToken: () -> Unit,
-    sendNotification: (String, String) -> Unit,
-) {
-
-    val (title, setTitle) = rememberSaveable { mutableStateOf("") }
-    val (body, setBody) = rememberSaveable { mutableStateOf("") }
-    val (recipientToken, setRecipientToken) = rememberSaveable { mutableStateOf("") }
-    val context = LocalContext.current
-
-    LaunchedEffect(key1 = token) {
-        if (token != null) {
-            if (token.isEmpty()) {
-                Toast.makeText(
-                    context,
-                    "No token is registered yet",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            setRecipientToken(token)
-        }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-
-        TextField(
-            value = title,
-            onValueChange = setTitle,
-            placeholder = {
-                Text(text = "Title")
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        )
-
-        TextField(
-            value = body,
-            onValueChange = setBody,
-            placeholder = {
-                Text(text = "Body")
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        )
-
-        TextField(
-            value = recipientToken,
-            onValueChange = setRecipientToken,
-            placeholder = {
-                Text(text = "Recipient Token")
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Button(onClick = getToken) {
-                Text(text = "Get Token")
-            }
-
-            Button(onClick = setToken) {
-                Text(text = "Set Token (for receiver)")
-            }
-
-        }
-
-        Button(
-            onClick = {
-                if (title.isNotEmpty() && body.isNotEmpty() && recipientToken.isNotEmpty()) {
-                    sendNotification(title, body)
-                } else {
-                    Toast.makeText(context, "Fields can't be empty", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            shape = ShapeDefaults.Small
-        ) {
-            Text(text = "Send Message")
-        }
-    }
-}
-
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreenContent(
     node: Node?,
     user: User?,
-    sessionState: SessionScoreDataState
+    sessionState: SessionScoreDataState,
+    onConnectWatch: () -> Unit
 ) {
     val context = LocalContext.current
     LaunchedEffect(key1 = sessionState.error) {
         if (sessionState.error.isNotEmpty())
             Toast.makeText(context, sessionState.error, Toast.LENGTH_SHORT).show()
+    }
+    val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    var showScrollToTopButton by remember { mutableStateOf(false) }
+    var lastScrollIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect {
+            if (listState.firstVisibleItemIndex > lastScrollIndex) {
+                // Scrolling down
+                showScrollToTopButton = true
+            } else if (listState.firstVisibleItemScrollOffset < lastScrollIndex ) {
+                // Scrolling up and at the top
+                showScrollToTopButton = false
+            }
+            lastScrollIndex = listState.firstVisibleItemIndex
+        }
     }
 
     LoadingScreen(loadingState = sessionState.isLoading)
@@ -185,24 +113,26 @@ fun HomeScreenContent(
             pranayamScore.mapNotNull { it.duration }.filter { it > 0 }.let { it.sum() / it.size }
                 .toDouble() / 1000
 
-        val sortedScores = (meditationScore + pranayamScore).sortedByDescending { it.calender }
+        val sortedScores = (meditationScore + pranayamScore).filter {
+            it.duration?.let { dur -> dur > 0 } ?: false
+        }.sortedByDescending { it.calender }
 
         val avgDhyanScore =
             sortedScores.mapNotNull { it.dhyan }.filter { !it.isNaN() && it > 0 }
                 .map { it / 100 }
-                .filter { it<=1 }
+                .filter { it <= 1 }
                 .let { it.sum() / it.size }
 
         val avgAasanScore =
             sortedScores.mapNotNull { it.aasana }.filter { !it.isNaN() && it > 0 }
                 .map { it / 100 }
-                .filter { it<=1 }
+                .filter { it <= 1 }
                 .let { it.sum() / it.size }
 
         val avgPranaScore =
             sortedScores.mapNotNull { it.prana }.filter { !it.isNaN() && it > 0 }
                 .map { it / 100 }
-                .filter { it<=1 }
+                .filter { it <= 1 }
                 .let { it.sum() / it.size }
 
         Log.e(
@@ -214,21 +144,22 @@ fun HomeScreenContent(
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            state = listState
         ) {
 
-            item {
-                CircularScoreBoard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.Black)
-                        .padding(12.dp),
-                    dhyanScore = 0.9f,
-                    aasanScore = 0.6f,
-                    pranaScore = 0.3f,
-                    ringSize = 200.dp
-                )
-            }
+            /* item {
+                 CircularScoreBoard(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .background(Color.Black)
+                         .padding(12.dp),
+                     dhyanScore = 0.9f,
+                     aasanScore = 0.6f,
+                     pranaScore = 0.3f,
+                     ringSize = 200.dp
+                 )
+             }*/
 
             item {
                 if (user != null) {
@@ -239,8 +170,28 @@ fun HomeScreenContent(
                     )
                 }
             }
+
+            /*            item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                shape = ShapeDefaults.Medium
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+
+                                }
+                            }
+                        }*/
+
             item {
-                WatchConnectionCard(node = node)
+                WatchConnectionCard(
+                    node = node,
+                    onRetry = onConnectWatch
+                )
             }
 
             item {
@@ -270,15 +221,40 @@ fun HomeScreenContent(
                             index = index,
                             score = score
                         )
-                    })
+                    },
+                    backgroundColor = WhiteCardColor
+                )
             }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        AnimatedVisibility(visible = showScrollToTopButton) {
+
+            FloatingActionButton(
+                shape = CircleShape,
+                onClick = {
+                    coroutineScope.launch {
+                        listState.animateScrollToItem(0)
+                    }
+                },
+                containerColor = BlackCardColor,
+                content = {
+                    Icon(
+                        imageVector = Icons.Outlined.ArrowUpward,
+                        contentDescription = "scroll to top",
+                        tint = Color.White
+                    )
+                }
+            )
         }
     }
 }
 
 @Composable
 fun WatchConnectionCard(
-    node: Node?
+    node: Node?,
+    onRetry: () -> Unit
 ) {
     ElevatedCard(
         modifier = Modifier
@@ -294,7 +270,7 @@ fun WatchConnectionCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = (0.15 * screenHeight).dp)
-                .background(color = Color(0xff2f2f2f)),
+                .background(color = BlackCardColor),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
@@ -319,23 +295,33 @@ fun WatchConnectionCard(
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(ShapeDefaults.Small.topStart))
-                        .background(
-                            color = Color.Gray
-                        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (node == null) Arrangement.SpaceAround else Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (node != null) "Connected"
-                        else "Not Connected",
-                        color = Color.White,
-                        modifier = Modifier.padding(6.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(ShapeDefaults.Small.topStart))
+                            .background(color = Color.Gray)
+                    ) {
+                        Text(
+                            text = if (node != null) "Connected"
+                            else "Not Connected",
+                            color = Color.White,
+                            modifier = Modifier.padding(6.dp)
+                        )
+                    }
+
+                    if (node == null) {
+                        Button(
+                            onClick = onRetry,
+                            shape = ShapeDefaults.Small
+                        ) {
+                            Text(text = "Retry")
+                        }
+                    }
                 }
-
-
             }
         }
     }
@@ -348,14 +334,15 @@ fun UserProfileCard(
     avgMedDuration: Double,
     avgPranaDuration: Double
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 10.dp
+        colors = CardDefaults.cardColors(
+            containerColor = WhiteCardColor
         )
+
     ) {
         val screenHeight = LocalConfiguration.current.screenHeightDp
         Column(
@@ -364,92 +351,86 @@ fun UserProfileCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = (0.3 * screenHeight).dp)
-                .background(color = Color(0xff2f2f2f))
                 .padding(8.dp)
 
         ) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
+            Column(
+                modifier = Modifier.padding(start = 6.dp)
             ) {
-                Image(
-                    painter = painterResource(
-                        id = if (user.gender == "Male") {
-                            R.drawable.male_avatar
-                        } else R.drawable.female_avatar
-                    ),
-                    contentDescription = "watch",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .padding(6.dp)
+
+                Text(
+                    text = "${user.username}, ${user.age} ",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.fillMaxWidth(),
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Roboto
+                )
+                Text(
+                    text = user.goal,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.fillMaxWidth(),
+                    fontFamily = Roboto
 
                 )
-                Spacer(modifier = Modifier.padding(12.dp))
-                Column {
-
-                    Text(
-                        text = user.username,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = "${user.age} Years",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
             }
 
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(ShapeDefaults.Small.topStart))
-                        .background(color = Color.Gray)
-                        .padding(6.dp)
+                Row(
+                    modifier = Modifier.weight(0.6f),
                 ) {
-                    Column {
+                    Card(
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .weight(.5f),
+                        shape = ShapeDefaults.Small
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
 
-                        Text(
-                            text = "Meditation",
-                            color = Color.White,
-                            modifier = Modifier.padding(6.dp)
-                        )
+                            Text(
+                                text = "Meditation",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(6.dp)
+                            )
 
-                        Text(
-                            text = "${avgMedDuration.format(1)} sec",
-                            color = Color.White,
-                            modifier = Modifier.padding(6.dp)
-                        )
+                            Text(
+                                text = "${avgMedDuration.format(1)} sec",
+                                modifier = Modifier.padding(6.dp)
+                            )
+                        }
                     }
-                }
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(ShapeDefaults.Small.topStart))
-                        .background(color = Color.Gray)
-                        .padding(6.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "Pranayam",
-                            color = Color.White,
-                            modifier = Modifier.padding(6.dp)
-                        )
 
-                        Text(
-                            text = "${avgPranaDuration.format(1)} sec",
-                            color = Color.White,
-                            modifier = Modifier.padding(6.dp)
-                        )
+                    Card(
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .weight(.5f),
+                        shape = ShapeDefaults.Small
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Pranayam",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(6.dp)
+                            )
+
+                            Text(
+                                text = "${avgPranaDuration.format(1)} sec",
+                                modifier = Modifier.padding(6.dp)
+                            )
+                        }
                     }
                 }
             }

@@ -6,7 +6,7 @@ import androidx.palette.graphics.Palette
 import com.epilepto.dhyanapp.presentation.screens.additional_details.AdditionalDetailsScreenList
 
 object Constants {
-    const val CLIENT_ID = "53628618990-65vhv4ttgons6ni7e6b048mbqiilojkp.apps.googleusercontent.com"
+    const val CLIENT_ID = "667182752134-uij9dpd892rh0gqd7b12tm0r6mi43pje.apps.googleusercontent.com"
 
     const val DEMO_POLICY = "What is Lorem Ipsum?\n" +
             "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.\n" +

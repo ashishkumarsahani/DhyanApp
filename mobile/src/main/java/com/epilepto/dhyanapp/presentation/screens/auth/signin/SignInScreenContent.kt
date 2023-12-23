@@ -94,7 +94,8 @@ fun SignInScreenContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            onClick = onLoginWithGoogle
+            onClick = onLoginWithGoogle,
+            isLoading = loadingState
         )
 
 /*        FacebookSignInButton(

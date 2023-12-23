@@ -107,8 +107,8 @@ class AuthenticationViewModel @Inject constructor(
                 user = firebaseUser.run {
                     User(
                         userId = uid,
-                        username = displayName!!,
-                        userEmail = email!!
+                        username = displayName?:"",
+                        userEmail = email?:""
                     )
                 }
 
@@ -217,8 +217,7 @@ class AuthenticationViewModel @Inject constructor(
         viewModelScope.launch {
             firebaseRepository.registerWithEmail(
                 email = email, password = pass
-            )
-                .collectLatest { res ->
+            ).collectLatest { res ->
                     when (res) {
                         is SignInResult.Failed -> _signupState.update {
                             it.copy(
@@ -257,7 +256,8 @@ class AuthenticationViewModel @Inject constructor(
                     is SignInResult.Failed -> _signupState.update {
                         it.copy(
                             isLoading = false,
-                            signInError = res.message
+                            signInError = res.message,
+                            isSignInSuccessful = false
                         )
                     }
 
@@ -306,20 +306,25 @@ class AuthenticationViewModel @Inject constructor(
         this._signInState.update { AuthState() }
         _signupState.update { AuthState() }
     }
-    fun deleteUser() {
-//        var uid = currentUser.value?.userId.toString()
-        var uid = auth.currentUser?.uid!!
-        val userRef = Firebase.firestore.collection("users")
-        val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
-        val user = firebaseAuth.currentUser
-        user?.delete()
-            ?.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    userRef.document(uid).delete()
-                } else {
-                    Log.d("", "Failed to delete user: ${task.exception?.message}")
+    fun deleteUser(
+        onSuccess:()->Unit,
+        onError:(Exception)->Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val userRef = Firebase.firestore.collection("users")
+                auth.currentUser?.let { user->
+                    user.delete().await()
+                    userRef.document(user.uid).delete()
+                    onSuccess()
                 }
             }
+            catch (e:Exception){
+                Log.e("DeleteUser", "Failed to delete user: ${e.message}")
+
+                onError(e)
+            }
+        }
     }
 
     fun setFirstTime(isFirstTime: Boolean) {
