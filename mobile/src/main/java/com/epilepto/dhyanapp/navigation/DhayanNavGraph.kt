@@ -11,6 +11,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.LocalContentColor
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,6 +22,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,7 +35,7 @@ import com.epilepto.dhyanapp.presentation.screens.additional_details.AdditionalD
 import com.epilepto.dhyanapp.presentation.screens.auth.AuthenticationViewModel
 import com.epilepto.dhyanapp.presentation.screens.auth.register.RegisterScreen
 import com.epilepto.dhyanapp.presentation.screens.auth.signin.AdditionalDetailsResponse
-import com.epilepto.dhyanapp.presentation.screens.auth.signin.SignInScreen
+import com.epilepto.dhyanapp.presentation.screens.auth.signin.AuthScreen
 import com.epilepto.dhyanapp.presentation.screens.main_screen.MainScreen
 import com.epilepto.dhyanapp.presentation.screens.main_screen.components.DisplayAlertDialog
 import com.epilepto.dhyanapp.presentation.screens.main_screen.home.SessionViewModel
@@ -52,14 +56,12 @@ import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.datalayer.phone.PhoneDataLayerAppHelper
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.stevdzasan.messagebar.rememberMessageBarState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import com.stevdzasan.messagebar.rememberMessageBarState
-import com.stevdzasan.onetap.rememberOneTapSignInState
-import kotlin.math.acosh
 
 
 @OptIn(ExperimentalHorologistApi::class)
@@ -87,7 +89,7 @@ fun SetupNavGraph(
             }
         )
 
-        signInScreen(
+        authScreen(
             navigateToHome = {
                 authViewModel.setFirstTime(false)
                 authViewModel.setAdditionalDetailsFilled(true)
@@ -98,14 +100,15 @@ fun SetupNavGraph(
                 authViewModel.setFirstTime(false)
                 navController.popBackStack()
                 navController.navigate(Screen.AdditionalDetails.route)
-            },
-            navigateToRegister = {
-                navController.navigate(Screen.Register.route) {
-                    launchSingleTop = true
-                }
             }
+//            navigateToRegister = {
+//                navController.navigate(Screen.Register.route) {
+//                    launchSingleTop = true
+//                }
+//            }
         )
-        registerScreen(
+
+/*        registerScreen(
             navigateToAdditionalDetails = {
                 authViewModel.setFirstTime(false)
                 navController.popBackStack()
@@ -116,7 +119,7 @@ fun SetupNavGraph(
                     launchSingleTop = true
                 }
             }
-        )
+        )*/
 
         additionalDetailsScreen(
             navigateToSignIn = {
@@ -164,12 +167,15 @@ fun NavGraphBuilder.onboardingScreen(
     }
 }
 
-fun NavGraphBuilder.signInScreen(
+fun NavGraphBuilder.authScreen(
     navigateToHome: () -> Unit,
-    navigateToRegister: () -> Unit,
     navigateToAdditionalDetails: () -> Unit,
 ) {
     composable(route = Screen.SignIn.route) {
+
+        val window = (LocalContext.current as Activity).window
+        window.statusBarColor = Color(0xff2BB2F7).toArgb()
+
         val authViewModel: AuthenticationViewModel = hiltViewModel()
         val messageBarState = rememberMessageBarState()
         val loadingState = authViewModel.loadingState.collectAsStateWithLifecycle().value
@@ -185,24 +191,25 @@ fun NavGraphBuilder.signInScreen(
             .build()
 
         val googleSignInClient = GoogleSignIn.getClient(activity, googleSignInOptions)
-        val signInLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                try {
-                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                    val account = task.getResult(ApiException::class.java)!!
-                    account.idToken?.let{
-                        Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-                        authViewModel.signInWithGoogle(token= it)
+        val signInLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    try {
+                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                        val account = task.getResult(ApiException::class.java)!!
+                        account.idToken?.let {
+                            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                            authViewModel.signInWithGoogle(token = it)
+                        }
+                    } catch (e: ApiException) {
+                        messageBarState.addError(e)
+                        authViewModel.setLoading(false)
                     }
-                } catch (e: ApiException) {
-                    messageBarState.addError(e)
-                    authViewModel.setLoading(false)
-                }
-            }else{
+                } else {
 
-                Toast.makeText(context, result.resultCode.toString(), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, result.resultCode.toString(), Toast.LENGTH_SHORT).show()
+                }
             }
-        }
 
         when {
             signInState.isLoading -> {
@@ -252,26 +259,20 @@ fun NavGraphBuilder.signInScreen(
             }
         }
 
-        SignInScreen(
-            messageBarState = messageBarState,
+        AuthScreen(
             loadingState = loadingState,
+            messageBarState = messageBarState,
+            onRegister = { name, email, password ->
+                authViewModel.signUpWithEmail(name, email, password)
+            },
             onLoginWithGoogle = {
                 authViewModel.setLoading(true)
                 val signInIntent = googleSignInClient.signInIntent
                 signInLauncher.launch(signInIntent)
             },
-            onLoginWithFacebook = {
-                authViewModel.setLoading(true)
-                //TODO : Login with Facebook
-            },
             onLoginWithEmail = { email, password ->
-                val errorMessage = SignInUtils.verifySignInDetails(email, password)
-                if (errorMessage.isEmpty())
-                    authViewModel.signInWithEmail(email, password)
-                else
-                    messageBarState.addError(Exception(errorMessage))
+                authViewModel.signInWithEmail(email, password)
             },
-            navigateToRegister = navigateToRegister,
             onForgotPassword = { email ->
                 var message = SignInUtils.isEmailValid(email)
 
@@ -293,6 +294,7 @@ fun NavGraphBuilder.signInScreen(
     }
 }
 
+/*
 fun NavGraphBuilder.registerScreen(
     navigateToAdditionalDetails: () -> Unit,
     navigateToSignIn: () -> Unit
@@ -336,7 +338,8 @@ fun NavGraphBuilder.registerScreen(
             showPrivacyPolicy = {
                 Intent().apply {
                     action = Intent.ACTION_VIEW
-                    data = Uri.parse("https://www.freeprivacypolicy.com/live/7b1de32c-dbd3-44db-af92-746118c869da")
+                    data =
+                        Uri.parse("https://www.freeprivacypolicy.com/live/7b1de32c-dbd3-44db-af92-746118c869da")
                 }.also {
                     context.startActivity(it)
                 }
@@ -344,13 +347,18 @@ fun NavGraphBuilder.registerScreen(
         )
     }
 }
+*/
 
 @OptIn(ExperimentalPagerApi::class)
 fun NavGraphBuilder.additionalDetailsScreen(
     navigateToHome: () -> Unit,
     navigateToSignIn: () -> Unit
 ) {
+
     composable(route = Screen.AdditionalDetails.route) {
+        val window = (LocalContext.current as Activity).window
+        window.statusBarColor = MaterialTheme.colors.surface.toArgb()
+
         val pagerState = rememberPagerState()
         val messageBarState = rememberMessageBarState()
         val viewModel: AuthenticationViewModel = hiltViewModel()
@@ -436,11 +444,13 @@ fun NavGraphBuilder.pairingPermissionScreen(
 }
 
 
-
 fun NavGraphBuilder.homeScreen(
     navigateToAuthentication: () -> Unit
 ) {
     composable(route = Screen.Home.route) {
+        val window = (LocalContext.current as Activity).window
+        window.statusBarColor = MaterialTheme.colors.surface.toArgb()
+
         val authViewModel: AuthenticationViewModel = hiltViewModel()
         var showSignOutDialog by remember { mutableStateOf(false) }
         var showDeleteUserDialog by remember { mutableStateOf(false) }
@@ -503,9 +513,9 @@ fun NavGraphBuilder.homeScreen(
             signOut = {
                 showSignOutDialog = true
             },
-             deleteUser = {
-                 showDeleteUserDialog = true
-             }
+            deleteUser = {
+                showDeleteUserDialog = true
+            }
         )
 
         DisplayAlertDialog(
@@ -527,8 +537,9 @@ fun NavGraphBuilder.homeScreen(
                     onSuccess = {
                         navigateToAuthentication()
                     },
-                    onError = {exception ->
-                        Toast.makeText(context, "Failed to delete profile", Toast.LENGTH_SHORT).show()
+                    onError = { exception ->
+                        Toast.makeText(context, "Failed to delete profile", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 )
             })

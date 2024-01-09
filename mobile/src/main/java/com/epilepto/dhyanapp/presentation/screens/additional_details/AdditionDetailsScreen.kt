@@ -16,7 +16,6 @@ fun AdditionalDetailsScreen(
 ) {
     ContentWithMessageBar(messageBarState = messageBarState) {
 
-
         AdditionalDetailsScreenContent(
             loadingState = loadingState,
             pagerState = pagerState,

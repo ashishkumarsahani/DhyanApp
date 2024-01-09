@@ -15,17 +15,21 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.epilepto.dhyanapp.presentation.components.GradientButton
 import com.epilepto.dhyanapp.theme.primaryColor
 
 sealed class Goal(
@@ -121,15 +125,22 @@ fun GoalsSelectionScreen(
         Column(
             modifier = Modifier.weight(.2f)
         ) {
-            OutlinedButton(
+/*            OutlinedButton(
                 onClick = onFinish,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(12.dp),
-                shape = Shapes().small,
+                shape = ShapeDefaults.Medium,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black)
             ) {
                 Text(text = "Finish")
+            }*/
+
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center){
+                GradientButton(
+                    title = "Finish",
+                    onClick = onFinish
+                )
             }
 
             TextButton(
@@ -158,7 +169,8 @@ fun GoalCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp)
-            .border(1.dp,Color.LightGray,Shapes().small)
+            .border(1.dp, Color.LightGray, Shapes().small)
+            .shadow(12.dp)
         ,
         onClick = {
             onSelect(goal)
@@ -168,7 +180,9 @@ fun GoalCard(
         ),
         shape = Shapes().small,
     ) {
-        Box(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)) {
             Column(
                 modifier = Modifier.align(Alignment.CenterStart)
             ) {
@@ -182,6 +196,15 @@ fun GoalCard(
                 Text(text = goal.description)
             }
         }
+
+    }
+}
+
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun PrevItem() {
+    GoalsSelectionScreen(selectedGoal = Goal.Beginner, onGoalChange = {}, onFinish = { /*TODO*/ }) {
 
     }
 }

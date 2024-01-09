@@ -9,43 +9,39 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.epilepto.dhyanapp.utils.Constants
+import androidx.compose.ui.graphics.Color
 import com.stevdzasan.messagebar.ContentWithMessageBar
 import com.stevdzasan.messagebar.MessageBarState
-import com.stevdzasan.onetap.OneTapSignInState
-import com.stevdzasan.onetap.OneTapSignInWithGoogle
 
 @Composable
-fun SignInScreen(
+fun AuthScreen(
     messageBarState: MessageBarState,
     loadingState: Boolean,
-    navigateToRegister: () -> Unit,
+    onRegister: (String,String,String) -> Unit,
     onLoginWithGoogle: () -> Unit,
-    onLoginWithFacebook: () -> Unit,
     onLoginWithEmail: (String, String) -> Unit,
     onForgotPassword:(String)->Unit
 ) {
 
     Scaffold(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+            .background(Color(0xff2BB2F7))
 
     ) { padding ->
         ContentWithMessageBar(
             messageBarState = messageBarState,
-            errorMaxLines = 3
+            errorMaxLines = 3,
+            successMaxLines = 3
         ) {
-            SignInScreenContent(
+            AuthScreenContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 loadingState = loadingState,
+                messageBarState = messageBarState,
                 onLoginWithGoogle = onLoginWithGoogle,
-                onLoginWithFacebook = onLoginWithFacebook,
                 onLoginWithEmail = onLoginWithEmail,
-                navigateToRegister = navigateToRegister,
+                onRegister = onRegister,
                 onForgotPassword = onForgotPassword
             )
         }
